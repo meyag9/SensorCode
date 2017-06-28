@@ -4,40 +4,34 @@ import time
 import Queue
 import sys
 import time
-from pyproj import Proj
 
+w = open("data.txt","w")
 
 def parseGPS(gps_msg):
-	if("$GPRMC" in gps_msg):
-		return gps_msg
+	tstr = time.strftime('%Y-%m-%d %H:%M:%S')
+	t = time.time()
+	list1 = gps_msg.split(",")
+	gpsType = list1[0]
+	time_ = (list1[1])
+	s = tstr + " " + gpsType + " " + time_ + "\n"
+	w.write(s)
+	print (tstr, " : ", time_)
 
 
 if __name__ == "__main__":
-
 	f = open(sys.argv[1], "rb")
-	w = open("data.txt","w")
 
 	while True:
 		no_msg = True
+		msg = f.readline()
 
-		#gps_msg = gps.get_line()		# this is NOT blocking!
-		gps_msg = f.readline()
-		if gps_msg == "":
+		if msg == "":
 			break
-		if gps_msg != None:
+		if msg != None:
 			no_msg = False
-			tstr = time.strftime('%Y-%m-%d %H:%M:%S')
-			t = time.time()
-			msg = parseGPS(gps_msg)
-			if msg != None:
-				list1 = msg.split(",")
-				gpsType = list1[0]
-				time_ = list1[1]
-				lat = list1[3] + list1[4]
-				lon = list1[5] + list1[6]
-				msgstr = tstr + " " + gpsType + " "+ lat + " " + lon
-				w.write(msgstr+"\n")
-				print (tstr, " : ", time_)
+			if("$GPRMC" in msg):
+				parseGPS(msg)
+
 
 		if no_msg:
 			time.sleep(.05)
