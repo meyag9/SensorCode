@@ -1,0 +1,4 @@
+CPS: 0  CPM: 64  uSv/hr: 0.36
+CPS: 2  CPM: 64  uSv/hr: 0.36
+CPS: 0  CPM: 63  uSv/hr: 0.35
+CPS: 0  CPM: 63  uSv/hr: 0.35
