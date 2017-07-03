@@ -1,3 +1,7 @@
+#
+#	reads gps and geiger value only from a given text file and seperates it into a user readable format 
+#
+
 from __future__ import print_function
 import threading
 import time
@@ -17,13 +21,13 @@ def parseGPS(gps_msg):
 	try:					#checks for corrupt data that the GPS may have sent. marked as corrupt and moves on if gps line is corrupted.
 		gpsType = list1[0]
 		time_ = (list1[1])
-		lat = dms_to_decimal(list1[3])
-		lon = dms_to_decimal(list1[5])
+		lat = dms_to_decimal(list1[2])
+		lon = dms_to_decimal(list1[4])
 		s = tstr + " " + gpsType + " " + time_ + " " + lat + " -" + lon +"\n"
 	except:
 		s = tstr + " " + gpsType + " " + time_ + " Corrupted Data\n"
 	w.write(s)
-	print (tstr, " : ", time_)
+	#print (tstr, " : ", time_)
 
 def parseGeiger(geiger_msg):
 	tstr = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -38,20 +42,13 @@ def parseGeiger(geiger_msg):
 	g.write(s)
 
 
-def dms_to_decimal(ll):		#converting from degrees, minutes, seconds to decimal notation
-    if len(ll) == 8:
-        degrees = ll[0]
-        decimal = ll[1] + ll[2] + ll[3] + ll[4] + ll[5] + ll[6] + ll[7]
-    elif len(ll) == 9:
-        degrees = ll[0] + ll[1]
-        decimal = ll[2] + ll[3] + ll[4] + ll[5] + ll[6] + ll[7] + ll[8]
-    elif len(ll) == 10:
-        degrees = ll[0] + ll[1] + ll[2]
-        decimal = ll[3] + ll[4] + ll[5] + ll[6] + ll[7] + ll[8] + ll[9]
-    decimal = round(((float(decimal))/60), 4)
-    ll = (float(degrees))+(float(decimal))
-    ll = str(ll)
-    return ll
+def dms_to_decimal(latlon):		#converting from degrees, minutes, seconds to decimal notation
+	deg = latlon
+	deg = float(deg)
+	ms = deg%100
+	ll  = (deg - ms)/100 + ms/60
+	return str(ll)
+
 
 if __name__ == "__main__":
 	f = open(sys.argv[1], "rb")
@@ -64,9 +61,9 @@ if __name__ == "__main__":
 			break
 		if msg != None:
 			no_msg = False
-			if("$GPRMC" in msg):
+			if("$GPGGA" in msg): # only accept GPRMC format
 				parseGPS(msg)
-			if("CPS" in msg):
+			if("CPS" in msg): # Geiger counter data
 				parseGeiger(msg)
 		if no_msg:
 			time.sleep(.05)
