@@ -14,7 +14,8 @@ import time
 
 
 I2C_address = 0x0E
-#USE_OFFSET = True = False
+USE_OFFSET = True
+#= False
 
 XC = 0
 YC = 0
