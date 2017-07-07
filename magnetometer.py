@@ -1,6 +1,3 @@
-#
-# retrieve data from magnetometer 3110 on RazPi
-#
 from __future__ import print_function
 import asyncore
 import math
@@ -15,12 +12,13 @@ import time
 
 I2C_address = 0x0E
 USE_OFFSET = True
-#= False
+# = False
 
 XC = 0
 YC = 0
 ZC = 0
 
+m = open("magdata.txt","w")
 
 class MAG3110(object):
 	def __init__(self, i2c_address):
@@ -204,7 +202,7 @@ class MAG3110(object):
 
 
 
-if __name__ == "__main__":
+def main():
 	mag = MAG3110(0x0E)
 
 	id = mag.get_id()
@@ -224,4 +222,6 @@ if __name__ == "__main__":
 		if data != None:
 			(x, y, z, M) = data
 			print("M=%1.1f, X=%1.1f, Y=%1.1f, Z=%1.1f" %(M, x, y, z))
+			m.write("M=%1.1f, X=%1.1f, Y=%1.1f, Z=%1.1f" %(M, x, y, z,))
+			m.write("\n")
 		time.sleep(0.1)
