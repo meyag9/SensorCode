@@ -4,20 +4,20 @@
 #
 from threading import Thread
 import GPS_and_geiger
-import mag_test
+import magnetometer
 from time import sleep
 
 def main():
     # Create thread to call on separate program
-    GPS = Thread(target=GPS_and_geiger.main)
+    g = Thread(target=GPS_and_geiger.main)
     # Exit the server thread when the main thread terminates
-    GPS.daemon = True
+    g.daemon = True
     #start thread execution
-    GPS.start()
+    g.start()
 
-    mag = Thread(target=magnetometer.main)
-    mag.daemon = True
-    mag.start()
+    m = Thread(target=magnetometer.main)
+    m.daemon = True
+    m.start()
 
 
     while(True): # Normal test would be until resource allocation time is up
