@@ -1,4 +1,5 @@
 from __future__ import print_function
+from c import MyGlobals
 import asyncore
 import math
 import Queue
@@ -18,7 +19,7 @@ XC = 0
 YC = 0
 ZC = 0
 
-m = open("magdata.txt","w")
+m = open("magdata.txt","a")
 
 class MAG3110(object):
 	def __init__(self, i2c_address):
@@ -200,11 +201,16 @@ class MAG3110(object):
 		if (mode == 2):
 			print(" (active, non-raw)")
 
+	def log(self, data):
+                (x, y, z, M) = data
+                s = "06 %d %7.2f %7.2f %7.2f Gs\r\n"%(time.time(), x, y, z)
+                print(s)
+                m.write(s)
 
+MAG_STATUS_INTERVAL = 15
 
 def main():
 	mag = MAG3110(0x0E)
-
 	id = mag.get_id()
 	print("ID = %02X"%id)
 
@@ -217,11 +223,17 @@ def main():
 		sys.exit()
 
 	mag.start_readings()
+	last_status_interval = time.time()
 	while True:
+		t = time.time()
 		data = mag.get_readings()
 		if data != None:
+			t = time.time()
 			(x, y, z, M) = data
-			print("M=%1.1f, X=%1.1f, Y=%1.1f, Z=%1.1f" %(M, x, y, z))
-			m.write("M=%1.1f, X=%1.1f, Y=%1.1f, Z=%1.1f" %(M, x, y, z,))
-			m.write("\n")
+                        s = "06 {:>10} {:>7} {:>7} {:>7} Gs\r\n".format(t,str_x,str_y,str_z) # mbg formatting
+			print(s)
+			m.write(s)
+			if t - last_status_interval > MAG_STATUS_INTERVAL:
+				last_status_interval = time.time()
+				MyGlobals.ser.write(s) #testing to write to serial (global var in master file)
 		time.sleep(0.1)

@@ -1,4 +1,11 @@
+#
+#	takes GPS and geiger counter input from uart on raspberry pi and seperates it into user readable format
+#       and outputs it to a text file
+#
 from __future__ import print_function
+from c import MyGlobals
+import release
+import serial
 import threading
 import time
 import Queue
@@ -6,10 +13,17 @@ import smbus
 import sys
 import time
 import i2c
+import release
 
-# initialize text files that I will write data to
-w = open("gpsdata.txt","w")
-g = open("geigerdata.txt","w")
+
+ALT_B_RELEASE = 24384
+ALT_P_RELEASE = 1000
+
+
+
+# initialize text files that data will be written to
+w = open("GPS_data.txt","a")	# 'a' - append to data log
+g = open("geigerdata.txt","a")
 
 IER = 1
 FCR = 2
@@ -24,7 +38,6 @@ DLL = 0
 DLH = 1
 EFR = 2
 RXLVL = 9
-
 
 
 class UART(object):
@@ -101,67 +114,194 @@ class UART(object):
 			return line
 
 
-def parseGPS(gps_msg):
-	tstr = time.strftime('%Y-%m-%d %H:%M:%S')
-	t = time.time()
-	list1 = gps_msg.split(",") # split into list to do conversion and format
-	try: 					#checks for corrupt data that the GPS may have sent. marked as corrupt and moves on if gps line is corrupted.
-		gpsType = list1[0]
-	    	time_ = (list1[1])
-	    	lat = dms_to_decimal(list1[2])
-	    	lon = dms_to_decimal(list1[4])
-	    	s = tstr + " " + gpsType + " " + time_ + " " + lat + " -" + lon +"\n"
-		print(s)
-	except:
-	    	s = tstr + " " + gpsType + " " + time_ + " Corrupted Data\n"
-	print(s)
-	w.write(s)
+# parse_count = 0
+# TEST_GPS = True
+# alts = [0, 0, 0, 0, 100, 200, 1000, 2000, 5000, ALT_B_RELEASE, ALT_B_RELEASE, ALT_B_RELEASE,
+# 5000, 4000, 3000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000, 2000,
+# ALT_P_RELEASE, ALT_P_RELEASE, ALT_P_RELEASE,
+# 900, 900, 900, 900, 900, 900, 900, 900, 900, 800, 700, 600, 500, 400, 300, 200, 100]
+    	def parseGPS(self, gps_msg):
+    	# if TEST_GPS:
+    	# 	global parse_count, TEST_GPS, alts
+    	# 	gps_alt = alts[parse_count]
+    	# 	parse_count += 1
+    	# 	t = parse_count
+    	# 	s = "05 %d"%(t) + " $$$$$$ 000000.00 12.3456 -789.1011 deg %1.1f m\r\n"%gps_alt		#tstr + " " + gpsType + " " + time_ + " GPS not locked \n"
+    	# 	print(s)
+    	# 	MyGlobals.ser.write(s) #send over serial port # jhn
+    	# 	MyGlobals.altitude = "%1.1f"%gps_alt
+    	# 	return
+            t = time.time()
+    	    list1 = gps_msg.split(",") # split into list to do conversion and format
+    	    try: 					#checks for corrupt data that the GPS may have sent. marked as corrupt and moves on if gps line is corrupted.
+    	        gpsType = list1[0]
+    		time_ = list1[1]
+    		lat = dms_to_decimal(list1[2])
+    		lon = dms_to_decimal(list1[4])
+    		altitude = list1[9]	# global variable because commands depend on altitude
+                #s = "05 %d %s %d %7.4f %9.4f deg %d m"%(t, gpsType, time_, lat, lon, altitude)
+            except:
+    		    s = "05 {} $$$$$$ 000000.00 12.3456 -789.1011 deg 00000 m\r\n".format(t)
+    	    print(s)
+    	    w.write(s) #log to text file # jhn
+            return s
+
+        def parseGeiger(self, geiger_msg):
+    # parse geiger data to send in certain format for telemetry
+    	    list2 = geiger_msg.split(",")
+    	    try:
+    		t = time.time()
+    		cps = list2[1]
+    		cpm = list2[3]
+    		usv = list2[5][1:5]
+    		spd = list2[6][1:5]
+                s = "04 {:>10} {:>2} {:>3} {:>5} {:>4} uSv/hr\r\n".format(t,cps,cpm,usv,spd) # mbg formatting
+    	    except:
+    		s = "04 1234567890 12 345 6.78 None uSv/hr\r\n" # jhn
+            print(s)
+    	    g.write(s) #log data
+            return s
 
 
-
-def parseGeiger(geiger_msg):
-	tstr = time.strftime('%Y-%m-%d %H:%M:%S')
-	list2 = geiger_msg.split(",")
-	try:
-		cps = list2[0] + ":"+ list2[1]
-	    	cpm = list2[2] + ":"+ list2[3]
-	    	usv = list2[4] + ":"+ list2[5]
-	    	s = cps + "" + cpm + "" + usv + "\n"
-	except:
-	    	s = tstr + " " + " Corrupted Data\n"
-	if s == "":
-		s = "No data collected"
-	g.write(s)
+        def dms_to_decimal(latlon):
+        #converting from degrees, minutes, seconds to decimal notation
+    	    deg = latlon
+    	    deg = float(deg)
+    	    ms = deg%100
+    	    ll  = round(((deg - ms)/100 + ms/60),4)
+    	    return str(ll)
 
 
+# def check_alt():
+# 	print("entered get_alt(): ") #for testing purposes
+# 	count = 3
+# 	#print(MyGlobals.altitude)
+# 	#if float(MyGlobals.altitude) >= 23484
+# 	if count > 2: # alt comes in str form so need to convert in order to compare
+# 		print ("I will release balloon now") #testing
+# 		b = threading.Thread(target=release.b_release)
+# 		b.daemon = True
+# 		b.start()
+# 		time.sleep(10)
+# 		par = threading.Thread(target=release.p_release)
+# 		par.daemon = True
+# 		par.start()
+# 	else: count = 0 # has to be three in a row
+# 	return
 
-def dms_to_decimal(latlon):		#converting from degrees, minutes, seconds to decimal notation
-	deg = latlon
-	deg = float(deg)
-	ms = deg%100
-	ll  = (deg - ms)/100 + ms/60
-	return str(ll)
 
-if __name__ == "__main__":
+def get_alt():
+#	v = float(MyGlobals.altitude)
+#	print("alt=%1.1f"%v)
+	return float(MyGlobals.altitude)
+
+
+ACTUATOR_STATUS_INTERVAL = 15
+
+
+# def send_actuator_status():
+# 	t = time.time()
+# 	b_status = release.get_ballon_actuator()
+# 	p_status = release.get_parachute_actuator()
+# 	br_s = "08 %d %1.2f V"%(t, b_status)
+# 	pr_s = "09 %d %1.2f V"%(t, p_status)
+# 	print(br_s+"\r\n"+pr_s+"\r\n")
+# 	alog.write(br_s+"\r\n"+pr_s+"\r\n")
+# 	MyGlobals.ser.write(br_s+"\r\n"+pr_s+"\r\n")
+# 	# send it as TLM
+
+def main():
+	while True:
+		try:
+			run_main()
+		except:
+			pass
+
+
+def run_main():
 	geiger = UART(0x49, 9600)
 	gps = UART(0x4d, 4800)
 
+	last_alt = 0
+
+	#wait for balloon release
+	print("Waiting for ballon release")
 	while True:
-		no_msg = True
+		alt = get_alt()
+		if alt >= ALT_B_RELEASE:
+			if last_alt >= ALT_B_RELEASE:
+				break
+		last_alt = alt
+
+		gps_msg = gps.get_line()			# this is NOT blocking
+		if gps_msg != None:
+		   	if("$GPGGA" in gps_msg): # if GPS message, parse the string
+				parseGPS(gps_msg)
 
 		geiger_msg = geiger.get_line()		# this is NOT blocking!
 		if geiger_msg != None:
-			no_msg = False
-	       		parseGeiger(geiger_msg)
+			parseGeiger(geiger_msg)
+
+		time.sleep(0.25)
 
 
-		gps_msg = gps.get_line()		# this is NOT blocking
-	    	if gps_msg != None:
-			no_msg = False
-	            	if("$GPGGA" in gps_msg): # if GPS message, parse the string
+	release.b_release()
+	start = time.time()
+	while time.time() - start <= 5:
+		gps_msg = gps.get_line()			# this is NOT blocking
+		if gps_msg != None:
+		   	if("$GPGGA" in gps_msg): # if GPS message, parse the string
+				parseGPS(gps_msg)
+		geiger_msg = geiger.get_line()		# this is NOT blocking!
+		if geiger_msg != None:
+	    		parseGeiger(geiger_msg)
+		time.sleep(0.5)
+
+
+	#wait for parachute release
+	print("Waiting for parachute release")
+	while True:
+		alt = get_alt()
+		if alt <= ALT_P_RELEASE:
+			if last_alt <= ALT_P_RELEASE:
+				break
+		last_alt = alt
+
+		gps_msg = gps.get_line()			# this is NOT blocking
+		if gps_msg != None:
+		   	if("$GPGGA" in gps_msg): # if GPS message, parse the string
 				parseGPS(gps_msg)
 
-		if no_msg:  #if no message in queue, wait until there is
-			print(".", end="")
-			sys.stdout.flush()
-		time.sleep(.1)
+		geiger_msg = geiger.get_line()		# this is NOT blocking!
+		if geiger_msg != None:
+			parseGeiger(geiger_msg)
+
+		time.sleep(0.5)
+
+
+	release.p_release()
+	start = time.time()
+	while time.time() - start <= 5:
+		gps_msg = gps.get_line()			# this is NOT blocking
+		if gps_msg != None:
+		   	if("$GPGGA" in gps_msg): # if GPS message, parse the string
+				parseGPS(gps_msg)
+		geiger_msg = geiger.get_line()		# this is NOT blocking!
+		if geiger_msg != None:
+	    		parseGeiger(geiger_msg)
+		time.sleep(0.5)
+
+
+	# until the end
+	print("waiting for impact")
+	while True:
+		gps_msg = gps.get_line()			# this is NOT blocking
+		if gps_msg != None:
+		   	if("$GPGGA" in gps_msg): # if GPS message, parse the string
+				parseGPS(gps_msg)
+
+		geiger_msg = geiger.get_line()		# this is NOT blocking!
+		if geiger_msg != None:
+			parseGeiger(geiger_msg)
+
+		time.sleep(0.25)

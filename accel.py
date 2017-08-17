@@ -1,8 +1,5 @@
-# Reading data from the accelerometer and writing data to a text file.
-# Last updated on 7/5/17. Update consisted of rounding floating point precision to two decimal places and creating a readable timestamp.
-
-
 from __future__ import print_function
+from c import MyGlobals
 import threading
 import time
 import Queue
@@ -12,8 +9,7 @@ import time
 import RPi.GPIO as GPIO
 
 
-
-a = open("acceldata.txt","w")
+a = open("acceldata.txt","a")
 
 class ACCELEROMETER(object):
 	def __init__(self, GPIO_x, GPIO_y):
@@ -76,16 +72,32 @@ class ACCELEROMETER(object):
 		else:
 			return data
 
+        def log(self, data):
+                s = "01 {} {} {} ug\r\n".format(time.time(), data[0], data[1])
+                a.write(s)
+                print(s)
 
-if __name__ == "__main__":
-	print("main()")
-	acc = ACCELEROMETER(17, 27)
-	while True:
-		data = acc.get_acceleration()
-		if data != None:
-			tstr = time.strftime('%Y-%m-%d %H:%M:%S')	#for timestamp
-			(acc_x, acc_y, t) = data
-			s = tstr + " " + str(data[2]) + "  X:" + str(round(data[0],2)) + "  Y:" + str(round(data[1],2)) + "\n"	#string to write into text file
-			a.write(s)	#writing to the file "acceldata.txt"
-			print("%d, acc_x = %1.2f, acc_y = %1.2f" %(t, acc_x, acc_y))
-		time.sleep(.5)
+# def main():
+# 	acc = ACCELEROMETER(12, 25) #17, 27
+# 	while True:
+# 		data = acc.get_acceleration()
+# 		if data != None:
+# 			(acc_x, acc_y, t) = data
+# 			s = "%d, %d, acc_x = %1.2f, acc_y = %1.2f\r\n" %(t, time.time(), acc_x, acc_y)
+# 			print(s)
+# 			m.write(s)
+# 			MyGlobals.ser.write(s)
+# 		print(".")
+# 		time.sleep(.5)
+
+#
+# if __name__ == "__main__":
+# 	acc = ACCELEROMETER(12, 25)
+# 	while True:
+# 		data = acc.get_acceleration()
+# 		if data != None:
+#             s = "01 {} {} {} ug\r\n".format( time.time(), data[0], data[1])
+# 			a.write(s)	#writing to the file "acceldata.txt"
+# 			MyGlobals.ser.write(s)
+# 			print(s)
+# 		time.sleep(.5)
