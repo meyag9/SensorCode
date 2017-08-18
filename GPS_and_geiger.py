@@ -1,9 +1,8 @@
 #
-#	takes GPS and geiger counter input from uart on raspberry pi and seperates it into user readable format
-#       and outputs it to a text file
+#	takes GPS and geiger counter input from uart on raspberry pi and seperates it into user readable format,
+#       outputs it to a text file
 #
 from __future__ import print_function
-from c import MyGlobals
 import release
 import serial
 import threading
@@ -139,7 +138,7 @@ class UART(object):
     		lat = dms_to_decimal(list1[2])
     		lon = dms_to_decimal(list1[4])
     		altitude = list1[9]	# global variable because commands depend on altitude
-                #s = "05 %d %s %d %7.4f %9.4f deg %d m"%(t, gpsType, time_, lat, lon, altitude)
+                s = "05 %d %s %d %7.4f %9.4f deg %d m"%(t,gpsType,time_,lat,lon,altitude)
             except:
     		    s = "05 {} $$$$$$ 000000.00 12.3456 -789.1011 deg 00000 m\r\n".format(t)
     	    print(s)
@@ -147,7 +146,7 @@ class UART(object):
             return s
 
         def parseGeiger(self, geiger_msg):
-    # parse geiger data to send in certain format for telemetry
+        # parse geiger data to send in certain format for telemetry
     	    list2 = geiger_msg.split(",")
     	    try:
     		t = time.time()
@@ -155,7 +154,7 @@ class UART(object):
     		cpm = list2[3]
     		usv = list2[5][1:5]
     		spd = list2[6][1:5]
-                s = "04 {:>10} {:>2} {:>3} {:>5} {:>4} uSv/hr\r\n".format(t,cps,cpm,usv,spd) # mbg formatting
+                s = "04 %d %d %d %d %d uSv/hr\r\n"%(t,cps,cpm,usv,spd) # might need to pad format
     	    except:
     		s = "04 1234567890 12 345 6.78 None uSv/hr\r\n" # jhn
             print(s)
@@ -172,43 +171,12 @@ class UART(object):
     	    return str(ll)
 
 
-# def check_alt():
-# 	print("entered get_alt(): ") #for testing purposes
-# 	count = 3
-# 	#print(MyGlobals.altitude)
-# 	#if float(MyGlobals.altitude) >= 23484
-# 	if count > 2: # alt comes in str form so need to convert in order to compare
-# 		print ("I will release balloon now") #testing
-# 		b = threading.Thread(target=release.b_release)
-# 		b.daemon = True
-# 		b.start()
-# 		time.sleep(10)
-# 		par = threading.Thread(target=release.p_release)
-# 		par.daemon = True
-# 		par.start()
-# 	else: count = 0 # has to be three in a row
-# 	return
-
-
-def get_alt():
-#	v = float(MyGlobals.altitude)
-#	print("alt=%1.1f"%v)
-	return float(MyGlobals.altitude)
+        def get_alt():
+             return float(altitude)
 
 
 ACTUATOR_STATUS_INTERVAL = 15
 
-
-# def send_actuator_status():
-# 	t = time.time()
-# 	b_status = release.get_ballon_actuator()
-# 	p_status = release.get_parachute_actuator()
-# 	br_s = "08 %d %1.2f V"%(t, b_status)
-# 	pr_s = "09 %d %1.2f V"%(t, p_status)
-# 	print(br_s+"\r\n"+pr_s+"\r\n")
-# 	alog.write(br_s+"\r\n"+pr_s+"\r\n")
-# 	MyGlobals.ser.write(br_s+"\r\n"+pr_s+"\r\n")
-# 	# send it as TLM
 
 def main():
 	while True:
